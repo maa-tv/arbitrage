@@ -1,8 +1,5 @@
 import { ethers } from "ethers";
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const ALCHEMY_API_URL = process.env.ALCHEMY_API_URL || "";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
@@ -15,7 +12,6 @@ const provider = new ethers.providers.JsonRpcProvider(ALCHEMY_API_URL);
 const authSigner = new ethers.Wallet(PRIVATE_KEY, provider);
 
 async function init() {
-  // Connect to MEV Blocker relay
   const flashbots = await FlashbotsBundleProvider.create(
     provider,
     authSigner,
@@ -27,8 +23,6 @@ async function init() {
   }
 
   console.log("✅ Connected to MEV Blocker:", MEV_BLOCKER_URL);
-
-  // Here is where you’d add your arbitrage or backrun logic
 }
 
 init().catch((err) => {
