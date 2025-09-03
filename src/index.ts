@@ -27,7 +27,7 @@ const TOKENS: Record<string, string> = {
 };
 
 // Pairs to scan
-const PAIRS = [
+const PAIRS: [string, string][] = [
   ["WETH", "DAI"],
   ["WETH", "USDC"],
   ["USDC", "DAI"],
@@ -70,4 +70,75 @@ async function init() {
         const uniOut = await uni.getAmountsOut(amountIn, path);
         const sushiOut = await sushi.getAmountsOut(amountIn, path);
 
-        const uniPrice = parseFloat(ethers.utils
+        const uniPrice = parseFloat(ethers.utils.formatUnits(uniOut[1], 18));
+        const sushiPrice = parseFloat(ethers.utils.formatUnits(sushiOut[1], 18));
+
+        console.log(`🔎 ${base}/${quote} → Uni: ${uniPrice.toFixed(2)} | Sushi: ${sushiPrice.toFixed(2)}`);
+
+        // Profit threshold 0.3%
+        if (uniPrice > sushiPrice * 1.003) {
+          console.log("🚀 Arbitrage: Buy Sushi → Sell Uni");
+          await executeArb(relays, sushi, uni, amountIn, path);
+        } else if (sushiPrice > uniPrice * 1.003) {
+          console.log("🚀 Arbitrage: Buy Uni → Sell Sushi");
+          await executeArb(relays, uni, sushi, amountIn, path);
+        }
+      }
+    } catch (err) {
+      console.error("Loop error:", err);
+    }
+  }, 15000); // every 15 sec
+}
+
+async function executeArb(
+  relays: FlashbotsBundleProvider[],
+  buyRouter: ethers.Contract,
+  sellRouter: ethers.Contract,
+  amountIn: any,
+  path: string[]
+) {
+  const block = await provider.getBlockNumber();
+  const deadline = Math.floor(Date.now() / 1000) + 60;
+
+  const buyTx = await buyRouter.populateTransaction.swapExactTokensForTokens(
+    amountIn,
+    0,
+    path,
+    wallet.address,
+    deadline
+  );
+
+  const sellTx = await sellRouter.populateTransaction.swapExactTokensForTokens(
+    amountIn,
+    0,
+    path,
+    wallet.address,
+    deadline
+  );
+
+  const bundle = [
+    {
+      signer: wallet,
+      transaction: { ...buyTx, chainId: 1, gasPrice: 0, gasLimit: 500000 }
+    },
+    {
+      signer: wallet,
+      transaction: { ...sellTx, chainId: 1, gasPrice: 0, gasLimit: 500000 }
+    }
+  ];
+
+  for (const relay of relays) {
+    try {
+      const result = await relay.sendBundle(bundle, block + 1);
+      const resolution = await result.wait();
+      if (resolution === FlashbotsBundleResolution.BundleIncluded) {
+        console.log("💰 Arbitrage executed successfully on relay:", relay.connection.url);
+        return;
+      }
+    } catch (err) {
+      console.error("Bundle failed on relay:", relay.connection.url, err);
+    }
+  }
+}
+
+init().catch(console.error);
