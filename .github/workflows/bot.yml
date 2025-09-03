@@ -1,0 +1,16 @@
+name: MEV Blocker Bot
+on:
+  schedule: [ { cron: '*/1 * * * *' } ]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with: { node-version: 18 }
+      - run: npm ci
+      - run: npm run start
+        env:
+          MEV_BLOCKER_URL: ${{ secrets.MEV_BLOCKER_URL }}
+          ALCHEMY_API_URL: ${{ secrets.ALCHEMY_API_URL }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
