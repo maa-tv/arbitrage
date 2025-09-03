@@ -1,21 +1,21 @@
-import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
 import { ethers } from "ethers";
+import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
+import dotenv from "dotenv";
 
-// Load environment variables
-require("dotenv").config();
+dotenv.config();
 
 const ALCHEMY_API_URL = process.env.ALCHEMY_API_URL || "";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const MEV_BLOCKER_URL = process.env.MEV_BLOCKER_URL || "https://rpc.mevblocker.io";
 
-// Provider for Ethereum mainnet
+// Ethereum provider (Alchemy mainnet)
 const provider = new ethers.providers.JsonRpcProvider(ALCHEMY_API_URL);
 
-// Wallet used to sign transactions (no ETH needed, just for auth)
+// Wallet signer (no ETH needed)
 const authSigner = new ethers.Wallet(PRIVATE_KEY, provider);
 
 async function init() {
-  // Connect to MEV Blocker relay instead of Flashbots default
+  // Connect to MEV Blocker relay
   const flashbots = await FlashbotsBundleProvider.create(
     provider,
     authSigner,
@@ -23,13 +23,14 @@ async function init() {
   );
 
   if (!flashbots) {
-    throw new Error("Could not connect to MEV Blocker relay");
+    throw new Error("❌ Could not connect to MEV Blocker relay");
   }
 
   console.log("✅ Connected to MEV Blocker:", MEV_BLOCKER_URL);
 
-  // Example placeholder (replace with your arb logic)
-  // Here you’d listen for opportunities and submit bundles
+  // Here is where you’d add your arbitrage or backrun logic
 }
 
-init().catch(console.error);
+init().catch((err) => {
+  console.error("❌ Bot crashed:", err);
+});
